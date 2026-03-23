@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Typography Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        /* Utility class to hide elements */
+        .hidden-el { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen bg-neutral-950 text-neutral-100 p-6 selection:bg-indigo-500/30">
+    <div class="max-w-5xl mx-auto space-y-8">
+        
+        <!-- Header -->
+        <header class="flex items-center justify-between border-b border-neutral-800 pb-6">
+            <div>
+                <h1 class="text-2xl font-semibold flex items-center gap-2">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-indigo-400"></i>
+                    3D Typography Studio
+                </h1>
+                <p class="text-neutral-400 text-sm mt-1">Cinematic 8K | AI Art Director | Volumetric Lighting</p>
+            </div>
+            <div class="px-3 py-1 bg-indigo-900/30 text-indigo-300 rounded-full text-xs flex items-center gap-2 border border-indigo-500/30">
+                <i data-lucide="wand-2" class="w-3 h-3"></i>
+                Gemini LLM Active
+            </div>
+        </header>
+
+        <!-- Controls Section -->
+        <section class="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+
+            <div class="flex flex-col md:flex-row gap-6 relative z-10">
+                <!-- Target Text -->
+                <div class="flex-1">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="block text-xs uppercase tracking-wider text-neutral-500 font-semibold">Target Text</label>
+                        <button id="btn-brainstorm" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 font-medium disabled:opacity-50" title="Generate a random concept and matching style">
+                            <i data-lucide="sparkles" class="w-3 h-3 icon-default"></i>
+                            <i data-lucide="loader-2" class="w-3 h-3 spinner hidden-el icon-loading"></i>
+                            ✨ Auto-Idea
+                        </button>
+                    </div>
+                    <input type="text" id="input-text" value="RUSS" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-bold tracking-wide" placeholder="Enter text...">
+                </div>
+                
+                <!-- Style Preset -->
+                <div class="flex-1">
+                    <label class="block text-xs uppercase tracking-wider text-neutral-500 font-semibold mb-2">3D Style Preset</label>
+                    <select id="select-style" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer">
+                        <option value="metallic">Metallic Chrome</option>
+                        <option value="realistic">Realistic Photoreal</option>
+                        <option value="cyberpunk" selected>Cyberpunk Neon</option>
+                        <option value="highDepth">High-Depth 3D</option>
+                    </select>
+                </div>
+                
+                <!-- Generate Button -->
+                <div class="flex items-end">
+                    <button id="btn-generate" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl px-8 py-3 font-medium flex items-center justify-center gap-2 transition-all h-[52px] shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)]">
+                        <i data-lucide="wand-2" class="w-5 h-5 icon-default"></i>
+                        <i data-lucide="loader-2" class="w-5 h-5 spinner hidden-el icon-loading"></i>
+                        <span id="btn-generate-text">✨ AI Batch Render</span>
+                    </button>
+                </div>
+            </div>
+            <p id="error-message" class="hidden-el text-red-400 text-sm mt-4 bg-red-950/30 p-3 rounded-lg border border-red-900/50"></p>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Variation Cards will be injected here via JS -->
+        </section>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        const apiKey = ""; 
+
+        const STYLES = {
+            metallic: {
+                name: 'Metallic Chrome',
+                basePrompt: 'Generate an image of the text "{text}" as a three-dimensional word in a polished chrome metallic style. Use extruded block letters with a mirror-like sheen, capturing realistic reflections and highlights. The letters should appear to float above a dark surface, lit by a single bright spotlight from the side to cast deep shadows and emphasize depth. Mobile-friendly 1:1 ratio, 8K fidelity, cinematic look.',
+            },
+            realistic: {
+                name: 'Realistic Photoreal',
+                basePrompt: 'Generate a photorealistic 3D image of the text "{text}" as if it were a tangible object. The letters should be three-dimensional wooden or plastic blocks on a real surface, lit by natural sunlight from one side. Include soft shadows on the ground and a slightly blurred background (shallow depth of field) to enhance the sense of depth. Mobile-friendly 1:1 ratio, 8K fidelity.',
+            },
+            cyberpunk: {
+                name: 'Cyberpunk Neon',
+                basePrompt: 'Generate an image of "{text}" in a cyberpunk 3D neon style. The text should appear as glowing neon-lit 3D letters with a futuristic cityscape backdrop at night. Use vibrant electric colors (neon blues, pinks, purples) and have the letters emit light with a slight haze. Show reflections on wet pavement below the floating text and add soft mist or fog to enhance depth. Mobile-friendly 1:1 ratio, cinematic 8K fidelity.',
+            },
+            highDepth: {
+                name: 'High-Depth 3D',
+                basePrompt: 'Generate a 3D high-depth text image of "{text}" with an extreme pop-out effect. The letters are bold and extruded, stretching toward the viewer (the first letter very large in the foreground and the last letter further back). Use a dynamic perspective angle and dramatic lighting from the top-front to cast long shadows behind the text. Solid transparent-style background. Mobile-friendly 1:1 ratio, 8K fidelity.',
+            }
+        };
+
+        const state = {
+            images: { A: null, B: null, C: null, D: null },
+            prompts: { A: '', B: '', C: '', D: '' },
+            loading: false,
+            loadingStep: ''
+        };
+
+        // DOM Elements
+        const elInputText = document.getElementById('input-text');
+        const elSelectStyle = document.getElementById('select-style');
+        const elBtnBrainstorm = document.getElementById('btn-brainstorm');
+        const elBtnGenerate = document.getElementById('btn-generate');
+        const elBtnGenerateText = document.getElementById('btn-generate-text');
+        const elErrorMessage = document.getElementById('error-message');
+        const elResultsGrid = document.getElementById('results-grid');
+
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        const fetchWithRetry = async (url, options, maxRetries = 5) => {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await sleep(delays[i]);
+                }
+            }
+        };
+
+        // Render the UI grid
+        const renderGrid = () => {
+            const currentText = elInputText.value.trim() || 'RUSS';
+            const currentStyle = elSelectStyle.value;
+            elResultsGrid.innerHTML = '';
+
+            ['A', 'B', 'C', 'D'].forEach(variant => {
+                const promptText = state.prompts[variant] || STYLES[currentStyle].basePrompt.replace('{text}', currentText);
+                const hasCustomPrompt = !!state.prompts[variant];
+                
+                const card = document.createElement('div');
+                card.className = 'group flex flex-col gap-3';
+                
+                let imageContent = '';
+                if (state.images[variant]) {
+                    imageContent = `
+                        <img src="${state.images[variant]}" alt="Variation ${variant}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                        <button onclick="handleDownload('${state.images[variant]}', '${currentText}_Variation_${variant}.png')" class="absolute bottom-3 right-3 bg-neutral-950/80 backdrop-blur text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-neutral-800" title="Download Render">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                    `;
+                } else if (state.loading) {
+                    imageContent = `
+                        <div class="flex flex-col items-center gap-3 text-indigo-400/50">
+                            <i data-lucide="loader-2" class="w-8 h-8 spinner"></i>
+                        </div>
+                    `;
+                } else {
+                    imageContent = `<i data-lucide="image" class="w-12 h-12 text-neutral-800"></i>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-sm font-semibold text-neutral-400 flex items-center gap-2">
+                            Variation ${variant}
+                            ${hasCustomPrompt ? '<i data-lucide="sparkles" class="w-3 h-3 text-indigo-400 opacity-70" title="Prompt directed by AI"></i>' : ''}
+                        </span>
+                        <span class="text-xs text-neutral-600 font-mono">1:1</span>
+                    </div>
+                    <div class="aspect-square bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden relative flex items-center justify-center group-hover:border-neutral-500/50 transition-colors">
+                        ${imageContent}
+                    </div>
+                    <div class="bg-neutral-900/50 rounded-xl p-3 border border-neutral-800/50 flex-1 relative overflow-hidden group/prompt">
+                        <p class="text-xs text-neutral-500 line-clamp-4 font-mono leading-relaxed group-hover/prompt:text-neutral-300 transition-colors relative z-10">
+                            ${promptText}
+                        </p>
+                        ${hasCustomPrompt ? '<div class="absolute inset-0 bg-gradient-to-t from-indigo-900/10 to-transparent pointer-events-none"></div>' : ''}
+                    </div>
+                `;
+                elResultsGrid.appendChild(card);
+            });
+            lucide.createIcons();
+        };
+
+        window.handleDownload = (dataUrl, filename) => {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        const generateText = async (promptText, schema = null) => {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }]
+            };
+            if (schema) {
+                payload.generationConfig = { responseMimeType: "application/json", responseSchema: schema };
+            }
+            const result = await fetchWithRetry(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return result.candidates?.[0]?.content?.parts?.[0]?.text;
+        };
+
+        const showError = (msg) => {
+            if(msg) {
+                elErrorMessage.textContent = msg;
+                elErrorMessage.classList.remove('hidden-el');
+            } else {
+                elErrorMessage.classList.add('hidden-el');
+            }
+        };
+
+        const setBrainstormLoading = (isLoading) => {
+            elBtnBrainstorm.disabled = isLoading;
+            const defIcon = elBtnBrainstorm.querySelector('.icon-default');
+            const loadIcon = elBtnBrainstorm.querySelector('.icon-loading');
+            if(isLoading) {
+                defIcon.classList.add('hidden-el');
+                loadIcon.classList.remove('hidden-el');
+            } else {
+                defIcon.classList.remove('hidden-el');
+                loadIcon.classList.add('hidden-el');
+            }
+        };
+
+        const setGenerateLoading = (isLoading, stepText = '✨ AI Batch Render') => {
+            state.loading = isLoading;
+            state.loadingStep = stepText;
+            
+            elBtnGenerate.disabled = isLoading;
+            elInputText.disabled = isLoading;
+            elSelectStyle.disabled = isLoading;
+            elBtnGenerateText.textContent = stepText;
+
+            const defIcon = elBtnGenerate.querySelector('.icon-default');
+            const loadIcon = elBtnGenerate.querySelector('.icon-loading');
+            
+            if(isLoading) {
+                defIcon.classList.add('hidden-el');
+                loadIcon.classList.remove('hidden-el');
+            } else {
+                defIcon.classList.remove('hidden-el');
+                loadIcon.classList.add('hidden-el');
+            }
+            renderGrid();
+        };
+
+        elBtnBrainstorm.addEventListener('click', async () => {
+            setBrainstormLoading(true);
+            try {
+                const prompt = "System: You are a creative 3D typography art director and naming assistant.\n\nTask: Generate a cool, punchy 1-to-2 word brand name, gang name, or sci-fi concept. Then pick the single best matching style key from this exact list: [metallic, realistic, cyberpunk, highDepth].";
+                const schema = { 
+                    type: "OBJECT", 
+                    properties: { text: { type: "STRING" }, style: { type: "STRING" } }, 
+                    required: ["text", "style"] 
+                };
+                const resultText = await generateText(prompt, schema);
+                const result = JSON.parse(resultText);
+                
+                elInputText.value = result.text.toUpperCase();
+                if (STYLES[result.style]) {
+                    elSelectStyle.value = result.style;
+                }
+            } catch(e) { 
+                console.error("Brainstorming failed:", e); 
+            } finally {
+                setBrainstormLoading(false);
+            }
+        });
+
+        elBtnGenerate.addEventListener('click', async () => {
+            const currentText = elInputText.value.trim();
+            if (!currentText) return;
+
+            showError(null);
+            state.images = { A: null, B: null, C: null, D: null };
+            state.prompts = { A: '', B: '', C: '', D: '' };
+            
+            const currentStyle = elSelectStyle.value;
+            const basePrompt = STYLES[currentStyle].basePrompt.replace('{text}', currentText);
+            let dynamicVariations = {};
+
+            try {
+                setGenerateLoading(true, '✨ AI Art Director planning shots...');
+                
+                const directorPrompt = `System: You are a cinematic 3D typography art director.\n\nTask: The base image generation prompt is: "${basePrompt}".
+                Generate 4 variations of this prompt for the text "${currentText}".
+                Variation A: Straight-on, hero shot.
+                Variation B: Dramatic low-angle.
+                Variation C: Interesting macro or high-angle detail.
+                Variation D: Extremely creative, unexpected atmospheric change but keeping the same materials.
+                Return as JSON with keys A, B, C, D mapped to the new, highly-descriptive prompt strings. Make sure you explicitly write out the word "${currentText}" in quotes in each prompt.`;
+
+                const schema = { 
+                    type: "OBJECT", 
+                    properties: { A: {type:"STRING"}, B: {type:"STRING"}, C: {type:"STRING"}, D: {type:"STRING"} },
+                    required: ["A", "B", "C", "D"]
+                };
+
+                try {
+                    const llmResult = await generateText(directorPrompt, schema);
+                    dynamicVariations = JSON.parse(llmResult);
+                } catch (llmError) {
+                    console.warn("AI Art Director failed, falling back to static prompts", llmError);
+                    dynamicVariations = {
+                        A: `${basePrompt} Variation A: Centered, straight-on perspective.`,
+                        B: `${basePrompt} Variation B: Low-angle perspective looking up at the text.`,
+                        C: `${basePrompt} Variation C: High-angle perspective looking down.`,
+                        D: `${basePrompt} Variation D: Extreme close-up on the first letter, fading into the background.`
+                    };
+                }
+                
+                state.prompts = dynamicVariations;
+                renderGrid(); // Show prompts while loading images
+
+                setGenerateLoading(true, 'Rendering 8K images...');
+                const imgUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
+                
+                for (const [key, prompt] of Object.entries(dynamicVariations)) {
+                    const payload = {
+                        instances: { prompt: prompt },
+                        parameters: { sampleCount: 1 }
+                    };
+
+                    const result = await fetchWithRetry(imgUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const base64Data = result.predictions?.[0]?.bytesBase64Encoded;
+                    if (base64Data) {
+                        state.images[key] = `data:image/png;base64,${base64Data}`;
+                        renderGrid(); // Update grid as images load sequentially
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                showError('Failed to generate images. Please ensure your environment has API access.');
+            } finally {
+                setGenerateLoading(false, '✨ AI Batch Render');
+            }
+        });
+
+        // Initial render
+        renderGrid();
+    </script>
+</body>
+</html>
+
+
+
+#0E008A
