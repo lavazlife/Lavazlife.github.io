@@ -1,0 +1,21 @@
+{
+  "name": "lava-notes",
+  "version": "1.0.0",
+  "description": "Lava Notes - Combined mobile workspace, prompt crafter, style forge, and 3D typography studio",
+  "main": "www/index.html",
+  "scripts": {
+    "cap:init": "npx cap init \"Lava Notes\" com.lavazlife.lavanotes --web-dir www",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "build:apk:debug": "cd android && ./gradlew assembleDebug",
+    "build:apk:release": "cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/core": "^6.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0"
+  }
+}

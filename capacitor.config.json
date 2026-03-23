@@ -1,0 +1,11 @@
+{
+  "appId": "com.lavazlife.lavanotes",
+  "appName": "Lava Notes",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
