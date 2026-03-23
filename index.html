@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0f0f1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>LavazLife</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind Play CDN fallback (overridden by compiled CSS below) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            neon: { pink:'#ff2d78', blue:'#00d4ff', green:'#39ff14', purple:'#bf00ff', orange:'#ff6b00', yellow:'#ffe600' }
+          },
+          fontFamily: { display:["'Orbitron'","sans-serif"], body:["'Exo 2'","sans-serif"] }
+        }
+      }
+    };
+  </script>
+  <!-- Compiled Tailwind / custom styles (takes priority over CDN) -->
+  <link rel="stylesheet" href="src/styles/app.css" />
+</head>
+
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  TAB CONTAINER                                             -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="tab-container">
+
+    <!-- ──────────────────── WORKSPACE TAB ───────────────────── -->
+    <div id="tab-workspace" class="tab-panel active">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-1 pt-2">
+        <h1 class="font-display text-lg tracking-widest" style="background:linear-gradient(90deg,#ff2d78,#bf00ff,#00d4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+          LAVA NOTES
+        </h1>
+        <div class="flex gap-2">
+          <button id="btn-new-note" class="btn-neon text-xs px-3 py-1.5">＋ New</button>
+          <button id="btn-save-note" class="btn-neon blue text-xs px-3 py-1.5">💾 Save</button>
+        </div>
+      </div>
+
+      <!-- Note title -->
+      <input id="note-title" class="neon-input" placeholder="Note title…" />
+
+      <!-- Editor toolbar -->
+      <div class="card" style="padding:8px;">
+        <div class="editor-toolbar" id="editor-toolbar">
+          <button class="toolbar-btn" data-cmd="bold"        title="Bold"><b>B</b></button>
+          <button class="toolbar-btn" data-cmd="italic"      title="Italic"><i>I</i></button>
+          <button class="toolbar-btn" data-cmd="underline"   title="Underline"><u>U</u></button>
+          <button class="toolbar-btn" data-cmd="strike"      title="Strike"><s>S</s></button>
+          <button class="toolbar-btn" data-cmd="h1"          title="H1">H1</button>
+          <button class="toolbar-btn" data-cmd="h2"          title="H2">H2</button>
+          <button class="toolbar-btn" data-cmd="bullet"      title="Bullet list">•</button>
+          <button class="toolbar-btn" data-cmd="ordered"     title="Ordered list">1.</button>
+          <button class="toolbar-btn" data-cmd="code"        title="Inline code">&lt;/&gt;</button>
+          <button class="toolbar-btn" data-cmd="blockquote"  title="Quote">❝</button>
+          <button class="toolbar-btn" data-cmd="undo"        title="Undo">↩</button>
+          <button class="toolbar-btn" data-cmd="redo"        title="Redo">↪</button>
+        </div>
+        <!-- TipTap mount point -->
+        <div id="editor"></div>
+      </div>
+
+      <!-- Notes list -->
+      <div class="card">
+        <div class="section-title">Saved Notes</div>
+        <div id="notes-list" class="flex flex-col gap-2 max-h-48 overflow-y-auto"></div>
+        <p id="notes-empty" class="text-center text-xs text-white/30 py-4">No notes yet. Tap ＋ New to start.</p>
+      </div>
+
+      <!-- Status -->
+      <div id="ws-status" class="status-bar"></div>
+    </div><!-- /tab-workspace -->
+
+    <!-- ──────────────────── STYLE FORGE TAB ─────────────────── -->
+    <div id="tab-styleforge" class="tab-panel">
+      <div class="flex items-center justify-between px-1 pt-2">
+        <h1 class="font-display text-lg tracking-widest text-neon-blue">STYLE FORGE</h1>
+        <span class="text-xs text-white/40 font-display">Vision AI</span>
+      </div>
+
+      <!-- Image picker -->
+      <div class="card flex flex-col gap-3">
+        <div class="section-title">Upload Reference Image</div>
+        <label class="btn-neon blue cursor-pointer text-center" for="sf-image-input">
+          📷 Choose Image
+        </label>
+        <input id="sf-image-input" type="file" accept="image/*" class="hidden" />
+        <img id="sf-preview" class="vision-preview hidden" alt="Preview" />
+      </div>
+
+      <!-- Analysis prompt -->
+      <div class="card flex flex-col gap-3">
+        <div class="section-title">Analysis Prompt</div>
+        <textarea id="sf-prompt" class="neon-input" rows="3"
+          placeholder="Describe what you want Gemini to analyze… (leave blank for auto-analysis)"></textarea>
+        <button id="btn-sf-analyze" class="btn-neon blue w-full">🔮 Analyze with Gemini Vision</button>
+      </div>
+
+      <!-- Results -->
+      <div class="card">
+        <div class="section-title">Vision Analysis</div>
+        <div id="sf-result" class="text-sm text-white/70 whitespace-pre-wrap min-h-[60px]">
+          <span class="text-white/30 text-xs">Results will appear here…</span>
+        </div>
+        <button id="btn-sf-insert" class="btn-neon mt-3 hidden">📝 Insert into Note</button>
+      </div>
+
+      <div id="sf-status" class="status-bar"></div>
+    </div><!-- /tab-styleforge -->
+
+    <!-- ──────────────────── PROMPT CRAFTER TAB ──────────────── -->
+    <div id="tab-crafter" class="tab-panel">
+      <div class="flex items-center justify-between px-1 pt-2">
+        <h1 class="font-display text-lg tracking-widest text-neon-purple">PROMPT CRAFTER</h1>
+        <span class="text-xs text-white/40 font-display">Gemini 2.5</span>
+      </div>
+
+      <!-- Subject input -->
+      <div class="card flex flex-col gap-3">
+        <div class="section-title">Subject / Idea</div>
+        <textarea id="pc-subject" class="neon-input" rows="3"
+          placeholder="Enter a subject, concept, or paste existing text to craft prompts from…"></textarea>
+        <div class="flex flex-wrap gap-2">
+          <button id="btn-pc-craft"    class="btn-neon purple">✨ Craft Prompts</button>
+          <button id="btn-pc-expand"   class="btn-neon purple">🔗 Expand Idea</button>
+          <button id="btn-pc-img"      class="btn-neon purple">🎨 Image Prompts</button>
+          <button id="btn-pc-auto"     class="btn-neon orange">⚡ Auto-Idea</button>
+        </div>
+      </div>
+
+      <!-- Style chips -->
+      <div class="card">
+        <div class="section-title">Style Tags</div>
+        <div id="pc-chips" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Output -->
+      <div class="card flex flex-col gap-3">
+        <div class="section-title">Crafted Output</div>
+        <div id="pc-output" class="text-sm text-white/70 whitespace-pre-wrap min-h-[80px]">
+          <span class="text-white/30 text-xs">Crafted prompts will appear here…</span>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-pc-copy"   class="btn-neon green hidden">📋 Copy</button>
+          <button id="btn-pc-insert" class="btn-neon hidden">📝 Insert into Note</button>
+          <button id="btn-pc-to-3d"  class="btn-neon orange hidden">🔷 Send to 3D Studio</button>
+        </div>
+      </div>
+
+      <div id="pc-status" class="status-bar"></div>
+    </div><!-- /tab-crafter -->
+
+    <!-- ──────────────────── 3D TYPOGRAPHY STUDIO TAB ────────── -->
+    <div id="tab-studio" class="tab-panel">
+      <div class="flex items-center justify-between px-1 pt-2">
+        <h1 class="font-display text-lg tracking-widest text-neon-orange">3D TYPOGRAPHY</h1>
+        <span class="text-xs text-white/40 font-display">Imagen 4.0</span>
+      </div>
+
+      <!-- Config -->
+      <div class="card flex flex-col gap-3">
+        <div class="section-title">Text & Style</div>
+        <div class="flex gap-2">
+          <div class="flex-1">
+            <label class="text-xs text-white/50 mb-1 block font-display tracking-wider uppercase">Target Text</label>
+            <input id="td-text" class="neon-input" value="RUSS" placeholder="RUSS" maxlength="20" />
+          </div>
+          <div class="flex-1">
+            <label class="text-xs text-white/50 mb-1 block font-display tracking-wider uppercase">Style</label>
+            <select id="td-style" class="neon-input">
+              <option value="neon glowing 3D chrome lettering on dark background">Neon Chrome</option>
+              <option value="fire and lava 3D text with molten glow">Fire & Lava</option>
+              <option value="ice crystal 3D typography with blue light refraction">Ice Crystal</option>
+              <option value="gold metallic 3D embossed text with dramatic lighting">Gold Metal</option>
+              <option value="holographic iridescent 3D text floating in space">Holographic</option>
+              <option value="graffiti 3D street art lettering with vibrant spray paint">Street Art</option>
+              <option value="marble stone 3D carved text with dramatic shadows">Marble Stone</option>
+              <option value="cyberpunk neon 3D text with glitch effects and scanlines">Cyberpunk</option>
+              <option value="custom">✏️ Custom…</option>
+            </select>
+          </div>
+        </div>
+        <div id="td-custom-wrap" class="hidden">
+          <textarea id="td-custom-style" class="neon-input" rows="2"
+            placeholder="Describe your custom 3D text style…"></textarea>
+        </div>
+      </div>
+
+      <!-- Brainstorm / AI assist -->
+      <div class="card flex flex-col gap-3">
+        <div class="section-title">AI Brainstorm</div>
+        <textarea id="td-brainstorm-input" class="neon-input" rows="2"
+          placeholder="Topic or vibe for brainstorming style ideas… (optional)"></textarea>
+        <div class="flex gap-2 flex-wrap">
+          <button id="btn-td-brainstorm" class="btn-neon orange">🧠 Brainstorm Styles</button>
+          <button id="btn-td-auto-idea"  class="btn-neon orange">⚡ Auto-Idea</button>
+        </div>
+        <div id="td-brainstorm-result" class="text-xs text-white/60 whitespace-pre-wrap hidden"></div>
+      </div>
+
+      <!-- Batch render controls -->
+      <div class="card flex flex-col gap-3">
+        <div class="section-title">AI Batch Render  <span class="text-xs text-white/40 font-sans normal-case tracking-normal">— generates A, B, C, D variants</span></div>
+        <div class="flex items-center gap-3">
+          <button id="btn-td-render" class="btn-neon orange flex-1">🔷 Render A·B·C·D</button>
+          <button id="btn-td-single" class="btn-neon flex-1">🎯 Single Render</button>
+        </div>
+        <div id="td-progress" class="status-bar hidden">
+          <span class="spinner mr-2"></span><span id="td-progress-text">Generating…</span>
+        </div>
+      </div>
+
+      <!-- Results batch grid -->
+      <div class="card">
+        <div class="section-title">Render Outputs</div>
+        <div id="td-batch-grid" class="batch-grid">
+          <div class="batch-item" id="td-slot-a"><span class="batch-label">A</span><div class="batch-placeholder flex items-center justify-center h-full text-white/20 text-xs">—</div></div>
+          <div class="batch-item" id="td-slot-b"><span class="batch-label">B</span><div class="batch-placeholder flex items-center justify-center h-full text-white/20 text-xs">—</div></div>
+          <div class="batch-item" id="td-slot-c"><span class="batch-label">C</span><div class="batch-placeholder flex items-center justify-center h-full text-white/20 text-xs">—</div></div>
+          <div class="batch-item" id="td-slot-d"><span class="batch-label">D</span><div class="batch-placeholder flex items-center justify-center h-full text-white/20 text-xs">—</div></div>
+        </div>
+      </div>
+
+      <div id="td-status" class="status-bar"></div>
+    </div><!-- /tab-studio -->
+
+    <!-- ──────────────────── ASSETS TAB ──────────────────────── -->
+    <div id="tab-assets" class="tab-panel">
+      <div class="flex items-center justify-between px-1 pt-2">
+        <h1 class="font-display text-lg tracking-widest text-neon-green">ASSETS</h1>
+        <button id="btn-assets-clear" class="text-xs text-red-400/70 font-display tracking-wider uppercase hover:text-red-400 transition-colors">Clear All</button>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="card flex gap-2 items-center py-2">
+        <button class="btn-neon green text-xs active-filter" data-filter="all">All</button>
+        <button class="btn-neon text-xs" data-filter="typography">3D Text</button>
+        <button class="btn-neon blue text-xs" data-filter="vision">Vision</button>
+      </div>
+
+      <!-- Grid -->
+      <div class="card">
+        <div id="assets-grid" class="asset-grid"></div>
+        <p id="assets-empty" class="text-center text-xs text-white/30 py-6">No assets saved yet. Generate images in the other tabs.</p>
+      </div>
+
+      <div id="assets-status" class="status-bar"></div>
+    </div><!-- /tab-assets -->
+
+  </div><!-- /tab-container -->
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  BOTTOM NAVIGATION                                         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-tab="workspace">
+      <!-- Pencil icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/>
+      </svg>
+      Workspace
+    </button>
+    <button class="nav-btn" data-tab="styleforge">
+      <!-- Eye icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+      </svg>
+      Style Forge
+    </button>
+    <button class="nav-btn" data-tab="crafter">
+      <!-- Wand icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m15 5 4 4"/><path d="M13 7 8.7 2.7a2.41 2.41 0 0 0-3.4 3.43L9.6 10.3"/><path d="m9 11-6 6v3h3l6-6"/><path d="m17 6 6 6-1.5 1.5"/><path d="M17 6l-6 6 1.5 1.5"/>
+      </svg>
+      Crafter
+    </button>
+    <button class="nav-btn" data-tab="studio">
+      <!-- Cube / 3D icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+      3D Studio
+    </button>
+    <button class="nav-btn" data-tab="assets">
+      <!-- Grid icon -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      Assets
+    </button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  SETTINGS MODAL (API keys)                                 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);">
+    <div class="glass-dark rounded-2xl p-5 mx-4 w-full max-w-sm">
+      <h2 class="section-title mb-4">API Keys & Settings</h2>
+      <div class="settings-row">
+        <label>Gemini Key</label>
+        <input id="setting-gemini-key" class="neon-input flex-1" type="password" placeholder="AIza…" />
+      </div>
+      <div class="settings-row mt-2">
+        <label>Firebase Config</label>
+        <button id="btn-fb-config" class="btn-neon text-xs">Edit JSON</button>
+      </div>
+      <textarea id="setting-fb-json" class="neon-input mt-2 text-xs font-mono" rows="5"
+        placeholder='{"apiKey":"…","projectId":"…","appId":"…"}'></textarea>
+      <div class="flex gap-3 mt-4">
+        <button id="btn-settings-save"  class="btn-neon green flex-1">Save</button>
+        <button id="btn-settings-close" class="btn-neon flex-1">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  IMAGE VIEWER MODAL                                        -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="image-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);" onclick="window.app.closeImageModal()">
+    <div class="relative mx-4 max-w-sm w-full" onclick="event.stopPropagation()">
+      <img id="image-modal-img" src="" alt="" class="w-full rounded-2xl shadow-neon-pink" />
+      <div class="flex gap-3 mt-3 justify-center">
+        <button id="btn-modal-insert"   class="btn-neon">📝 Insert into Note</button>
+        <button id="btn-modal-download" class="btn-neon blue">⬇ Download</button>
+        <button class="btn-neon" onclick="window.app.closeImageModal()">✕ Close</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ─── Scripts ────────────────────────────────────────────── -->
+<!-- Capacitor (injected at runtime in native context) -->
+<!-- TipTap via CDN (UMD build) -->
+<script src="https://cdn.jsdelivr.net/npm/@tiptap/core@2/dist/tiptap-core.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tiptap/starter-kit@2/dist/tiptap-starter-kit.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tiptap/extension-underline@2/dist/tiptap-extension-underline.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tiptap/extension-placeholder@2/dist/tiptap-extension-placeholder.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tiptap/extension-image@2/dist/tiptap-extension-image.umd.min.js"></script>
+<!-- LocalForage -->
+<script src="https://cdn.jsdelivr.net/npm/localforage@1/dist/localforage.min.js"></script>
+<!-- Firebase App + Firestore (modular compat bundle) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- App modules -->
+<script type="module" src="src/app.js"></script>
+
+</body>
+</html>
