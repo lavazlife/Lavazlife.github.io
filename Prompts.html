@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lava Notes - Pro Mobile Copilot</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --accent: #007bff; --danger: #dc3545; --success: #28a745; --border: #333; }
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; line-height: 1.5; }
+  .nav { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+  button { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+  button.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .tab { display: none; animation: fadeIn 0.2s ease; }
+  .tab.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  
+  textarea, .sandbox-input { width: 100%; height: 150px; background: #000; color: #0f0; font-family: monospace; border: 1px solid #444; border-radius: 8px; padding: 12px; box-sizing: border-box; margin-bottom: 5px; }
+  .stats-bar { font-size: 11px; color: #888; margin-bottom: 10px; display: flex; justify-content: space-between; }
+  
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .save-btn { background: var(--success); color: white; border: none; }
+  .clear-btn { background: var(--danger); color: white; border: none; }
+  .util-btn { background: #333; color: #fff; font-size: 0.8em; }
+  
+  .item-card { background: var(--card); padding: 15px; border-radius: 10px; margin-bottom: 12px; border: 1px solid var(--border); transition: 0.3s; position: relative; cursor: pointer; }
+  .item-card.copied { border-color: var(--success); box-shadow: 0 0 15px var(--success); }
+  .signature { font-family: 'Dancing Script', cursive; font-size: 1.2em; color: var(--accent); margin-top: 8px; display: block; }
+  
+  .card-actions { display: flex; gap: 15px; margin-top: 10px; border-top: 1px solid #333; padding-top: 8px; }
+  .action-link { font-size: 0.85em; text-decoration: underline; cursor: pointer; background: none; border: none; padding: 5px 0; font-weight: bold; color: #aaa; }
+  .edit-link { color: var(--accent); }
+  .del-link { color: var(--danger); }
+
+  #sandbox-preview { width: 100%; min-height: 180px; background: white; border-radius: 8px; border: 2px solid var(--accent); margin-top: 10px; padding: 10px; box-sizing: border-box; color: black; overflow: auto; }
+  .search-input { width: 100%; padding: 12px; background: var(--card); color: var(--text); border: 1px solid var(--accent); border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <button class="tab-btn active" onclick="switchTab(event, 'notes')">Notes</button>
+  <button class="tab-btn" onclick="switchTab(event, 'prompts')">Prompts</button>
+  <button class="tab-btn" onclick="switchTab(event, 'html')">Library</button>
+  <button class="tab-btn" onclick="switchTab(event, 'sandbox')">Sandbox</button>
+</div>
+
+<div id="notes" class="tab active">
+  <textarea id="noteInput" placeholder="Type here..." oninput="updateStats()"></textarea>
+  <div class="stats-bar"><span id="wordCount">Words: 0</span><span id="editStatus"></span></div>
+  <div class="controls">
+    <button id="mainSaveBtn" class="save-btn" onclick="saveNote()">Save Note</button>
+    <button class="clear-btn" onclick="clearAllNotes()">Clear All</button>
+    <button class="util-btn" onclick="exportNotes()">Export (Down)</button>
+    <button class="util-btn" onclick="document.getElementById('importFile').click()">Import (Up)</button>
+    <input type="file" id="importFile" style="display:none" onchange="importNotes(event)">
+  </div>
+  <div id="noteList"></div>
+</div>
+
+<div id="prompts" class="tab">
+  <input type="text" id="promptSearch" class="search-input" placeholder="Search 80+ prompts..." onkeyup="loadPrompts()">
+  <select id="promptCategory" onchange="loadPrompts()" style="width:100%; padding:12px; margin-bottom:15px; background:var(--card); color:var(--text); border-radius:8px;">
+    <option value="image">Image Gen</option>
+    <option value="video">Video Gen</option>
+    <option value="podcast">Podcast Gen</option>
+    <option value="file">File Gen</option>
+  </select>
+  <div id="promptList"></div>
+</div>
+
+<div id="html" class="tab"><div id="templateList"></div></div>
+
+<div id="sandbox" class="tab">
+  <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+    <b>Live Editor</b>
+    <div style="display:flex; gap:5px;">
+        <button onclick="saveSandboxToNotes()" style="padding:4px 8px; font-size:11px; background:var(--success); color:white; border:none;">Save Note</button>
+        <button onclick="document.getElementById('sandboxInput').value='';" style="padding:4px 8px; font-size:11px; background:var(--danger); color:white; border:none;">Wipe Editor</button>
+    </div>
+  </div>
+  <textarea id="sandboxInput" class="sandbox-input" oninput="runSandbox()"></textarea>
+  <div class="stats-bar"><span id="lineCount">Lines: 0</span></div>
+  <div id="sandbox-preview"></div>
+</div>
+
+<script>
+  let editingIndex = -1;
+
+  function switchTab(e, tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    e.currentTarget.classList.add('active');
+    if(tabId === 'sandbox') runSandbox();
+  }
+
+  function copyText(text, element) {
+    const cleanText = text.replace(/\[SIG\]/g, "\n\n");
+    const textArea = document.createElement("textarea");
+    textArea.value = cleanText;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    if(element) {
+        element.classList.add('copied');
+        setTimeout(() => element.classList.remove('copied'), 600);
+    }
+  }
+
+  function saveNote() {
+    const input = document.getElementById('noteInput').value;
+    if (!input.trim()) return;
+    let notes = JSON.parse(localStorage.getItem('savedNotes') || '[]');
+    const sigTag = "[SIG]Best regards, Russ";
+    if (editingIndex > -1) {
+        notes[editingIndex] = input.includes("[SIG]") ? input : input + sigTag;
+        editingIndex = -1;
+        document.getElementById('editStatus').innerText = "";
+        document.getElementById('mainSaveBtn').innerText = "Save Note";
+    } else {
+        notes.unshift(input + sigTag);
+    }
+    localStorage.setItem('savedNotes', JSON.stringify(notes));
+    document.getElementById('noteInput').value = '';
+    updateStats();
+    loadNotes();
+  }
+
+  function editNote(index, e) {
+    e.stopPropagation();
+    let notes = JSON.parse(localStorage.getItem('savedNotes') || '[]');
+    document.getElementById('noteInput').value = notes[index].split("[SIG]")[0];
+    editingIndex = index;
+    document.getElementById('editStatus').innerText = "(Editing Mode)";
+    document.getElementById('mainSaveBtn').innerText = "Update Note";
+    window.scrollTo(0, 0);
+  }
+
+  function loadNotes() {
+    let notes = JSON.parse(localStorage.getItem('savedNotes') || '[]');
+    document.getElementById('noteList').innerHTML = notes.map((n, i) => {
+      const parts = n.split("[SIG]");
+      const body = parts[0].replace(/</g, '&lt;');
+      const sig = parts[1] ? `<span class="signature">${parts[1]}</span>` : "";
+      return `<div class="item-card" onclick="copyText(decodeURIComponent('${encodeURIComponent(n)}'), this)">
+        <small style="color:var(--accent);font-size:0.7em;">Tap to Copy</small><br>${body}${sig}
+        <div class="card-actions">
+          <button class="action-link edit-link" onclick="editNote(${i}, event)">Edit</button>
+          <button class="action-link del-link" onclick="event.stopPropagation(); deleteNote(${i})">Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function deleteNote(index) {
+    if(confirm("Delete this?")) {
+        let notes = JSON.parse(localStorage.getItem('savedNotes') || '[]');
+        notes.splice(index, 1);
+        localStorage.setItem('savedNotes', JSON.stringify(notes));
+        loadNotes();
+    }
+  }
+
+  function exportNotes() {
+    let notes = JSON.parse(localStorage.getItem('savedNotes') || '[]');
+    const html = `<html><body id="export-body" data-json='${JSON.stringify(notes)}' style="font-family:sans-serif;background:#eee;padding:20px;">
+      <h1>Exported Notes</h1><hr>${notes.map(n => `<div class="note-box" style="background:white;padding:15px;margin:10px;border-radius:8px;">${n.replace("[SIG]", "<br><i>")+"</i>"}</div>`).join('')}
+    </body></html>`;
+    const blob = new Blob([html], {type: 'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Lava_Notes_Backup.html';
+    a.click();
+  }
+
+  function importNotes(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(e.target.result, "text/html");
+        const body = doc.getElementById("export-body");
+        if(body && body.getAttribute("data-json")) {
+            const imported = JSON.parse(body.getAttribute("data-json"));
+            if(confirm(`Import ${imported.length} notes?`)) {
+                let current = JSON.parse(localStorage.getItem('savedNotes') || '[]');
+                localStorage.setItem('savedNotes', JSON.stringify([...imported, ...current]));
+                loadNotes();
+            }
+        }
+    };
+    reader.readAsText(file);
+  }
+
+  function updateStats() {
+    const text = document.getElementById('noteInput').value.trim();
+    document.getElementById('wordCount').innerText = `Words: ${text ? text.split(/\s+/).length : 0}`;
+  }
+
+  function runSandbox() {
+    const code = document.getElementById('sandboxInput').value;
+    document.getElementById('sandbox-preview').innerHTML = code;
+    document.getElementById('lineCount').innerText = `Lines: ${code.split('\n').length}`;
+  }
+
+  function saveSandboxToNotes() {
+    const code = document.getElementById('sandboxInput').value;
+    if (!code.trim()) return;
+    let notes = JSON.parse(localStorage.getItem('savedNotes') || '[]');
+    notes.unshift(code + "[SIG]Best regards, Russ");
+    localStorage.setItem('savedNotes', JSON.stringify(notes));
+    alert('Saved!');
+  }
+
+  function clearAllNotes() {
+    if(confirm("Wipe all?")) { localStorage.removeItem('savedNotes'); loadNotes(); }
+  }
+
+  const prompts = {
+    image: ["Cinematic 8K, volumetric lighting, neo-noir reflections.", "Macro 105mm chrome logo, depth of field.", "Golden hour nature, Blue Ridge Mountains fog.", "Stylized vector cyberpunk neon icon, 1:1.", "3D gold/glass logo for 'Lavaz Life'.", "Found footage eerie cabin, high contrast VHS.", "Anime RealMix cyberpunk girl, neon monitors.", "Sci-fi corridor, holographic displays.", "Premium carbon fiber phone product shot.", "Minimal modern brand logo, solid background.", "Cyberpunk street, rain puddles, 8k ray-tracing.", "Abandoned asylum hallway, found footage grain.", "Surreal floating island, volumetric clouds.", "Retro 80s synthwave landscape, neon grid.", "Hyper-realistic portrait, three-point lighting.", "Industrial warehouse, cinematic shadows.", "Steampunk machine, detailed brass gears.", "Underwater ruins, bioluminescent lighting.", "Macro circuit board, glowing data paths.", "Cybernetic eye close-up, digital iris."],
+    video: ["Pan ArchViz interior, 60fps.", "Drone flyover fantasy mountain, blue hour.", "Neon droid time-lapse, cyberpunk alley.", "First-person horror hallway, flashlight flicker.", "Slow-motion macro water splash on chrome.", "Cinematic logo spin, volumetric lighting.", "Restaurant kitchen rush time-lapse.", "Server rack glowing, data center pan.", "90s truck foggy mountain road tracking.", "360 rotation neon sign, smooth motion.", "Deep sea creature glide, bioluminescence.", "Space station docking sequence, 4k.", "Volcano eruption drone shot, high heat contrast.", "Walking through Tokyo at night, POV 60fps.", "Abstract liquid metal morphing, 4k.", "Desert sandstorm approach, cinematic drone.", "Forest fire embers floating, slow motion.", "Rain on window, city lights bokeh background.", "Cyberpunk crowd walking, low angle.", "Futuristic car drive-by, neon reflections."],
+    podcast: ["Intro: Android ADB commands.", "Interview: Found footage films.", "Evolution: 90s country music.", "Basics: IT networking.", "Privacy: Local storage benefits.", "Lore: Appalachian ghost stories.", "News: Samsung One UI features.", "Tech: React vs Classes.", "Design: AI vs Human Brand.", "Tips: School/Work balance.", "Security: Enterprise firewalls.", "Outro: Dev newsletter promo.", "History: The first computer virus.", "Review: Top 5 found footage movies.", "Discussion: Future of AI automation.", "Interview: Warehouse safety tech.", "Guide: Setting up a home lab.", "Deep dive: Linux kernel basics.", "Story: Life in Middletown, NY.", "Podcast Intro: Graphic design trends 2026."],
+    file: ["Python: Auto-rename files.", "JSON: REST API profiles.", "Batch: ADB cache/reboot.", "HTML: Mobile note UI.", "JSON: Study tracker.", "ADB: APK backup script.", "Pandas: Work shift analysis.", "Next.js: Sidebar component.", "Bash: Network IP ping.", "qBittorrent: Config optimization.", "Email: IT support template.", "JS: Local storage manager.", "CSS: Neo-noir palette.", "Python: Web scraper for movies.", "C++: Basic sorting algorithm.", "Docker: Simple container setup.", "SQL: Employee database schema.", "Markdown: Project readme template.", "Java: Basic calculator app.", "Powershell: System health report."]
+  };
+
+  const templates = [
+    { title: "Task Planner", code: "<div><h2>Today</h2><ul><li>Task 1</li></ul></div>" },
+    { title: "Pomodoro UI", code: "<div style='text-align:center;'><h2>25:00</h2><button>Start</button></div>" },
+    { title: "Kanban", code: "<div style='display:flex;gap:5px;'><div>To Do</div><div>Done</div></div>" },
+    { title: "IT Notes", code: "<div style='background:#eee;padding:10px;'><h3>Topic</h3></div>" },
+    { title: "Shift Tracker", code: "<table border='1'><tr><th>Day</th><th>Shift</th></tr><tr><td>Wed</td><td>9am-9pm</td></tr></table>" },
+    { title: "Base Layout", code: "<div style='background:#007bff;padding:15px;'>Header</div>" },
+    { title: "Dark Toggle", code: "<button style='background:#333;color:#fff;'>Toggle</button>" },
+    { title: "Watchlist", code: "<div><h3>Movies</h3><ul><li>[REC]</li></ul></div>" },
+    { title: "Code Card", code: "<div style='background:#000;color:#0f0;'><code>adb shell</code></div>" },
+    { title: "Contact Form", code: "<form><input><button>Send</button></form>" },
+    { title: "Price Table", code: "<table><tr><td>Plan A</td><td>$10</td></tr></table>" },
+    { title: "Profile Card", code: "<div style='border:1px solid #ccc;'><h3>User Name</h3></div>" },
+    { title: "Navbar", code: "<nav><a href='#'>Home</a> | <a href='#'>About</a></nav>" },
+    { title: "Footer", code: "<footer>&copy; 2026 Lava Notes</footer>" },
+    { title: "Hero Section", code: "<section><h1>Welcome</h1><p>Banner text.</p></section>" },
+    { title: "Alert Box", code: "<div style='color:red;'>Warning! Error detected.</div>" },
+    { title: "Product Grid", code: "<div style='display:grid;grid-template-columns:1fr 1fr;'>Item</div>" },
+    { title: "Login Page", code: "<form><input type='password'><button>Login</button></form>" },
+    { title: "Search Bar UI", code: "<div style='display:flex;'><input><button>Search</button></div>" },
+    { title: "Timeline", code: "<ul><li>2025: Started</li><li>2026: Scaling</li></ul>" },
+    { title: "Rating Stars", code: "<span>&#9733;&#9733;&#9733;&#9733;&#9734;</span>" },
+    { title: "Chat Bubble", code: "<div style='background:blue;color:white;border-radius:10px;'>Hello!</div>" },
+    { title: "Progress Bar", code: "<div style='background:#ddd;'><div style='width:50%;background:green;'>50%</div></div>" },
+    { title: "Accordion", code: "<div><b>Details +</b><p style='display:none;'>Hidden info.</p></div>" },
+    { title: "Video Embed", code: "<div style='background:#000;height:100px;'>Video Player</div>" },
+    { title: "Audio Player", code: "<div style='border:1px solid #333;'>Play [ ]-----</div>" },
+    { title: "Badge", code: "<span style='background:red;border-radius:50%;padding:5px;'>1</span>" },
+    { title: "Modal Pop", code: "<div style='position:fixed;background:#fff;color:#000;'>Popup</div>" },
+    { title: "Tag Cloud", code: "<div style='display:flex;gap:5px;'><span>#AI</span><span>#Dev</span></div>" },
+    { title: "Stat Box", code: "<div><h4>Users</h4><p>1.2k</p></div>" }
+  ];
+
+  function loadPrompts() {
+    const cat = document.getElementById('promptCategory').value;
+    const query = document.getElementById('promptSearch').value.toLowerCase();
+    const filtered = prompts[cat].filter(p => p.toLowerCase().includes(query));
+    document.getElementById('promptList').innerHTML = filtered.map(p => {
+      const pEncoded = encodeURIComponent(p);
+      return `<div class="item-card" onclick="copyText(decodeURIComponent('${pEncoded}'), this)">${p}<div class="card-actions"><button class="action-link edit-link">Copy</button></div></div>`;
+    }).join('');
+  }
+
+  function loadTemplates() {
+    document.getElementById('templateList').innerHTML = templates.map(t => {
+      const codeEncoded = encodeURIComponent(t.code);
+      const displayCode = t.code.replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 30);
+      return `<div class="item-card" onclick="copyText(decodeURIComponent('${codeEncoded}'), this)"><b>${t.title}</b><br><code>${displayCode}...</code><div class="card-actions"><button class="action-link edit-link">Copy Full Template</button></div></div>`;
+    }).join('');
+  }
+
+  loadNotes(); loadPrompts(); loadTemplates(); runSandbox();
+</script>
+</body>
+</html>
