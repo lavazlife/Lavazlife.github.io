@@ -1,6 +1,6 @@
 {
-  "appId": "com.lavazlife.app",
-  "appName": "LavazLife",
+  "appId": "com.lavazlife.promptbuilder",
+  "appName": "Site Builder",
   "webDir": ".",
   "server": {
     "androidScheme": "https"
