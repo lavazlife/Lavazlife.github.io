@@ -80,7 +80,11 @@
     import Color from 'https://esm.sh/@tiptap/extension-color@2.2.4?bundle';
     import Image from 'https://esm.sh/@tiptap/extension-image@2.2.4?bundle';
 
-    const firebaseConfig = { apiKey: "AIzaSyC8hA5nn9CQl8WpZNJiUU1W-veiBCnO-eQ", authDomain: "lavanote-project.firebaseapp.com", projectId: "lavanote-project" };
+    const firebaseConfig = { 
+      apiKey: "YOUR_FIREBASE_API_KEY", 
+      authDomain: "YOUR_PROJECT.firebaseapp.com", 
+      projectId: "YOUR_PROJECT_ID" 
+    };
     const app = initializeApp(firebaseConfig);
     window.db = getFirestore(app);
     window.doc = doc; window.setDoc = setDoc; window.getDoc = getDoc;
@@ -107,6 +111,185 @@
 <body class="flex flex-col h-screen">
 
   <header class="w-full text-center pt-4 md:pt-6 pb-2 md:pb-4 glass-nav shrink-0 z-50">
+    <h1 class="text-4xl md:text-6xl neon-cursive-title">Lava Notes</h1>
+  </header>
+
+  <nav class="glass-nav z-40 flex items-center h-12 md:h-14 shrink-0 overflow-x-auto px-2 md:px-0 scrollbar-hide">
+    <div class="flex gap-4 md:gap-6 px-2 md:px-4 w-full max-w-6xl justify-start md:justify-center whitespace-nowrap min-w-max pb-1 md:pb-0">
+      <button onclick="window.switchView('notes')" id="nav-notes" class="nav-active font-bold text-xs md:text-lg transition-all uppercase tracking-wider pop-text">💻 Workspace</button>
+      <button onclick="window.switchView('style')" id="nav-style" class="nav-inactive font-bold text-xs md:text-lg transition-all uppercase tracking-wider pop-text">🎨 Style Forge</button>
+      <button onclick="window.switchView('prompt')" id="nav-prompt" class="nav-inactive font-bold text-xs md:text-lg transition-all uppercase tracking-wider pop-text">✨ Prompt Crafter</button>
+      <button onclick="window.switchView('library')" id="nav-library" class="nav-inactive font-bold text-xs md:text-lg transition-all uppercase tracking-wider pop-text">📚 Prompt Library</button>
+      <button onclick="window.switchView('assets')" id="nav-assets" class="nav-inactive font-bold text-xs md:text-lg transition-all uppercase tracking-wider pop-text">📦 Assets</button>
+    </div>
+  </nav>
+
+  <div id="view-notes" class="flex-1 flex overflow-hidden relative">
+    <div id="mobile-overlay" onclick="window.toggleSidebar()" class="fixed inset-0 bg-black bg-opacity-80 z-10 hidden md:hidden backdrop-blur-sm"></div>
+
+    <aside id="sidebar" class="w-72 md:w-80 panel-inner flex flex-col absolute md:relative z-20 h-full transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+      <div class="p-4 md:p-5 border-b border-gray-800 flex justify-between items-center">
+        <h2 class="text-xl md:text-2xl font-bold text-d1d5db pop-text">Documents</h2>
+        <button onclick="window.toggleSidebar()" class="md:hidden text-gray-400 hover:text-white text-2xl">&times;</button>
+      </div>
+      <div class="p-3 md:p-5 flex gap-2">
+        <button onclick="window.createNewNote()" class="flex-1 py-2 rounded-lg btn-3d-burgundy text-xs md:text-sm uppercase tracking-wider">+ New Note</button>
+      </div>
+      <div class="px-3 md:px-5 pb-3 flex gap-2 md:gap-3 text-[10px] md:text-xs">
+        <button onclick="window.exportNotes()" class="flex-1 py-2 rounded btn-3d-navy">📥 Export</button>
+        <button onclick="document.getElementById('import-file').click()" class="flex-1 py-2 rounded btn-3d-navy">📤 Import</button>
+        <input type="file" id="import-file" accept=".json" class="hidden" onchange="window.importNotes(event)">
+      </div>
+      <div class="px-3 md:px-5 py-2 md:py-3 border-b border-gray-800">
+        <input type="text" id="search-bar" oninput="window.renderNoteList()" placeholder="🔍 Search titles or tags..." class="w-full input-3d rounded-lg px-3 py-2 text-xs md:text-sm transition-colors">
+      </div>
+      <div id="note-list" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2 md:space-y-4"></div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full bg-[#080c17] relative w-full overflow-hidden">
+      <header class="p-3 md:p-5 flex items-center justify-between shrink-0 z-10 border-b border-gray-800 bg-[#0b1120]">
+        <div class="flex items-center gap-2 md:gap-4 w-full">
+          <button onclick="window.toggleSidebar()" class="md:hidden text-gray-300 hover:text-white text-xl px-2">☰</button>
+          <div class="flex flex-col w-full max-w-xl">
+            <input type="text" id="note-title" oninput="window.updateNoteData()" class="bg-transparent text-xl md:text-3xl font-bold focus:outline-none border-b-2 border-transparent focus:border-f97316 w-full placeholder-gray-600 text-d1d5db pop-text transition-colors pb-1" placeholder="Note Title...">
+            <input type="text" id="note-tags" oninput="window.updateNoteData()" class="bg-transparent text-xs md:text-sm text-f97316 focus:outline-none placeholder-gray-600 mt-1 md:mt-2 w-full font-mono" placeholder="#tags (comma separated)...">
+          </div>
+        </div>
+        <div class="flex gap-2 items-center">
+            <button onclick="window.toggleGallery()" class="px-3 py-1 md:px-4 md:py-2 btn-3d-silver text-xs md:text-sm rounded-lg whitespace-nowrap hidden md:block border-f97316">🖼️ Gallery</button>
+            <button onclick="window.deleteCurrentNote()" class="px-3 py-1 md:px-4 md:py-2 btn-3d-navy text-xs md:text-sm rounded-lg whitespace-nowrap">🗑️ Delete</button>
+        </div>
+      </header>
+
+      <div class="flex-1 flex flex-col md:flex-row min-h-0 relative">
+        <div class="flex-1 flex flex-col m-2 md:m-4 md:mr-2 panel-3d overflow-hidden relative z-10 transition-all duration-300">
+           <div class="flex flex-wrap gap-2 md:gap-3 p-2 md:p-3 panel-inner sticky top-0 z-10 shrink-0 items-center border-b border-gray-800">
+             
+             <div class="flex items-center input-3d p-1 rounded-lg">
+               <select id="theme-picker" onchange="window.applyTheme(this.value)" class="bg-transparent text-d1d5db text-xs md:text-sm focus:outline-none cursor-pointer font-bold px-1">
+                 <option value="lava">🌋 Lava</option>
+                 <option value="navy">🌌 Navy</option>
+                 <option value="burgundy">🍷 Burgundy</option>
+                 <option value="ubuntu">🟠 Ubuntu</option>
+                 <option value="matrix">🟩 Matrix</option>
+                 <option value="synthwave">🟣 Synthwave</option>
+               </select>
+             </div>
+
+             <div class="flex items-center gap-1 md:gap-2 input-3d p-1 rounded-lg">
+               <select id="font-picker" onchange="window.changeEditorStyle()" class="bg-transparent text-d1d5db text-xs md:text-sm focus:outline-none cursor-pointer w-[70px] md:w-24 px-1">
+                 <option value="'Outfit', sans-serif">Outfit</option>
+                 <option value="'Orbitron', sans-serif">Sci-Fi</option>
+                 <option value="'Cinzel', serif">Cinematic</option>
+                 <option value="'Space Grotesk', sans-serif">Modern</option>
+                 <option value="'Fira Code', monospace">Mono</option>
+                 <option value="'Dancing Script', cursive">Cursive</option>
+                 <option value="serif">Serif</option>
+               </select>
+               <div class="w-px h-4 bg-gray-700 mx-1"></div>
+               <select id="font-size-picker" onchange="window.applyFontSize(this.value)" class="bg-transparent text-d1d5db text-xs focus:outline-none cursor-pointer w-10 px-1">
+                 <option value="1">SM</option>
+                 <option value="3" selected>MD</option>
+                 <option value="5">LG</option>
+                 <option value="7">XL</option>
+               </select>
+               <div class="w-px h-4 bg-gray-700 mx-1"></div>
+               <select onchange="window.applyModernFormat('color', this.value)" class="bg-transparent text-d1d5db text-[10px] md:text-xs focus:outline-none cursor-pointer w-16 px-1">
+                  <option value="">Color...</option>
+                  <option value="#f97316">Lava Orange</option>
+                  <option value="#3b82f6">Cyber Blue</option>
+                  <option value="#e11d48">Burgundy</option>
+                  <option value="#00ff41">Matrix Green</option>
+                  <option value="#f9a8d4">Neon Pink</option>
+                  <option value="#ffffff">Pure White</option>
+               </select>
+               <input type="color" id="text-color-picker" onchange="window.applyModernFormat('color', this.value)" value="#d1d5db" class="w-5 h-5 rounded cursor-pointer bg-transparent border-none">
+             </div>
+
+             <div class="flex items-center gap-1">
+               <button onclick="window.applyModernFormat('bold')" class="w-7 h-7 md:w-8 md:h-8 rounded btn-3d-silver font-black text-sm">B</button>
+               <button onclick="window.applyModernFormat('italic')" class="w-7 h-7 md:w-8 md:h-8 rounded btn-3d-silver italic font-bold text-sm">I</button>
+               <button onclick="window.applyModernFormat('underline')" class="w-7 h-7 md:w-8 md:h-8 rounded btn-3d-silver underline font-bold text-sm">U</button>
+               <button onclick="window.applyModernFormat('glow')" class="w-7 h-7 md:w-8 md:h-8 rounded btn-3d-burgundy font-bold text-sm">G</button>
+             </div>
+             
+             <div class="flex items-center gap-2 ml-auto">
+               <button onclick="window.syncFromCloud()" class="px-2 py-1 md:px-4 md:py-1.5 btn-3d-navy text-xs rounded-lg font-bold shadow-lg uppercase tracking-wider">🔄 Sync</button>
+               <button onclick="window.triggerManualSave(this)" class="px-2 py-1 md:px-4 md:py-1.5 btn-3d-burgundy text-xs rounded-lg font-bold shadow-lg uppercase tracking-wider">💾 Save</button>
+               <button onclick="window.copyNoteText()" class="px-2 py-1 md:px-3 md:py-1 btn-3d-silver text-xs rounded hidden md:block">Copy</button>
+               <button onclick="window.toggleGallery()" class="px-2 py-1 btn-3d-navy text-xs rounded md:hidden border-f97316">🖼️ Gallery</button>
+             </div>
+           </div>
+
+           <div id="text-editor" class="flex-1 w-full p-4 md:p-8 overflow-y-auto text-base md:text-xl leading-relaxed transition-all duration-500 bg-center bg-cover bg-no-repeat pop-text break-words" style="color: #d1d5db; background-color: #0f172a;"></div>
+           
+           <div class="flex justify-between items-center p-2 panel-inner text-[10px] md:text-xs text-d1d5db shrink-0 border-t border-gray-800">
+             <div class="flex items-center gap-1">
+               <button onclick="document.getElementById('bg-img-picker').click()" class="text-gray-400 hover:text-white px-1">🖼️ Set BG</button>
+               <input type="file" id="bg-img-picker" accept="image/*" class="hidden" onchange="window.setCanvasBackground(this)">
+               <input type="color" id="canvas-bg-color" class="hidden" onchange="window.updateCanvasStyle()">
+             </div>
+             <span id="save-status" class="text-f97316 opacity-0 transition-opacity duration-300 font-bold tracking-wider uppercase">💾 Saved</span>
+             <div><span id="word-count" class="font-black text-white text-xs md:text-sm">0</span> words</div>
+           </div>
+        </div>
+
+        <aside id="gallery-panel" class="hidden md:flex w-full md:w-72 lg:w-80 flex-col bg-[#0b1120] border-l border-gray-800 z-20 transition-all transform md:translate-x-0 absolute md:relative inset-y-0 right-0 shadow-2xl md:shadow-none">
+           <div class="p-3 border-b border-gray-800 flex justify-between items-center bg-[#080c17]">
+             <h3 class="font-bold text-white text-sm uppercase tracking-wider pop-text">📌 Reference Gallery</h3>
+             <button onclick="window.toggleGallery()" class="text-gray-400 hover:text-white md:hidden text-lg">&times;</button>
+           </div>
+           <div class="p-3">
+               <button onclick="document.getElementById('gallery-upload').click()" class="w-full py-2 btn-3d-navy rounded-lg text-xs font-bold uppercase tracking-wider border border-dashed border-[#3b82f6]">➕ Add Image</button>
+               <input type="file" id="gallery-upload" accept="image/*" class="hidden" onchange="window.handleGalleryUpload(event)">
+           </div>
+           <div id="gallery-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start">
+             <div class="col-span-2 text-center text-xs text-gray-500 font-mono py-8">No references pinned yet.</div>
+           </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div id="view-style" class="hidden flex-1 gradient-bg w-full">
+    <div class="min-h-full w-full flex flex-col items-center p-4 md:p-10 pb-16">
+      <div class="flex gap-4 mb-4 justify-center w-full mt-2 md:mt-6">
+         <a href="https://images.google.com" target="_blank" class="btn-3d-silver px-4 py-2 rounded-lg text-xs font-bold uppercase shadow-lg">🔍 Google Images</a>
+         <a href="https://pinterest.com" target="_blank" class="btn-3d-burgundy px-4 py-2 rounded-lg text-xs font-bold uppercase shadow-lg">📌 Pinterest</a>
+      </div>
+      <header class="text-center mb-6 md:mb-8 w-full">
+        <h1 class="text-3xl md:text-5xl font-black text-white pop-text drop-shadow-2xl mb-2">Style Forge</h1>
+        <p class="text-gray-300 text-xs md:text-base max-w-xl mx-auto font-medium">Extract aesthetic DNA and hidden prompts from AI generations.</p>
+      </header>
+      <main class="w-full max-w-3xl relative z-10">
+        <div class="mb-4 md:mb-8 panel-3d p-3 md:p-5 flex gap-2 md:gap-4 items-center">
+          <span class="text-xl md:text-3xl drop-shadow-lg">🔑</span>
+          <input type="password" id="gemini-api-key-forge" placeholder="Gemini API Key..." class="flex-1 input-3d rounded-lg px-3 md:px-5 py-2 md:py-3 text-xs md:text-base focus:border-f97316 transition-colors">
+        </div>
+        <div id="sf-upload-section" class="mb-6 md:mb-8">
+          <div id="sf-upload-zone" class="upload-zone rounded-xl md:rounded-2xl p-6 md:p-16 text-center cursor-pointer panel-3d" onclick="document.getElementById('sf-file-input').click()">
+            <input type="file" id="sf-file-input" accept="image/png, image/jpeg, image/webp" class="hidden">
+            <div id="sf-upload-content">
+              <div class="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 rounded-full btn-3d-navy flex items-center justify-center animate-pulse"><span class="text-2xl md:text-4xl">⬆️</span></div>
+              <p class="text-xl md:text-2xl font-bold text-white mb-1 md:mb-2 pop-text">Drop AI Image to Analyze</p>
+              <p class="text-xs md:text-sm text-gray-400 font-mono">Auto-extracts PNG Metadata or uses Gemini Vision</p>
+            </div>
+            <div id="sf-preview-content" class="hidden">
+              <img id="sf-preview-image" src="" alt="Preview" class="mx-auto rounded-xl max-h-48 md:max-h-72 object-contain shadow-2xl border-4 border-[#1e3a8a] mb-4 md:mb-6">
+              <button onclick="event.stopPropagation(); window.resetForge();" class="text-[#d1d5db] text-xs md:text-sm hover:text-white transition font-bold btn-3d-navy px-3 md:px-4 py-2 rounded-lg">🔄 Select different image</button>
+            </div>
+          </div>
+        </div>
+        <div id="sf-analyzing" class="hidden mb-6 md:mb-8 text-center panel-3d p-6 md:p-10">
+          <span class="text-4xl md:text-5xl inline-block animate-bounce mb-4 md:mb-6 drop-shadow-lg">🧬</span>
+          <p class="text-xl md:text-2xl text-white font-bold pop-text mb-2">Extracting DNA...</p>
+        </div>
+        <div id="sf-result" class="hidden panel-3d p-4 md:p-10 space-y-6 md:space-y-8">
+          <div>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+              <h2 class="text-xl md:text-2xl font-bold text-white pop-text">📝 Extracted Details</h2>
+              <div class="flex gap-2 w-full md:w-auto">
+                <button onclick="window.saveToNotesFromElement('sf-prompt-output', false, this)" class="flex-1 md:flex-none btn-3d-burgundy px-3 md:px-5 py-2 rounded-lg text-xs md:text-sm font-bold transition
     <h1 class="text-4xl md:text-6xl neon-cursive-title">Lava Notes</h1>
   </header>
 
