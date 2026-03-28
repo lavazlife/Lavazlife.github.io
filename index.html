@@ -63,6 +63,11 @@
     .gradient-bg { background: radial-gradient(circle at top right, #172554, #080c17 70%); position: relative; overflow-y: auto; height: 100%; }
     .upload-zone { background: #0f172a; border: 2px dashed #1e3a8a; box-shadow: inset 5px 5px 15px rgba(0,0,0,0.5); transition: all 0.4s; position: relative; overflow: hidden; }
     .upload-zone:hover { border-color: #f97316; background: #172554; transform: scale(1.01); box-shadow: inset 5px 5px 15px rgba(0,0,0,0.5), 0 0 20px rgba(249, 115, 22, 0.2); }
+    
+    .gallery-enter { transform: translateX(100%); opacity: 0; }
+    .gallery-enter-active { transform: translateX(0); opacity: 1; transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1); }
+    .gallery-exit { transform: translateX(0); opacity: 1; }
+    .gallery-exit-active { transform: translateX(100%); opacity: 0; transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1); }
   </style>
   
   <script type="module">
@@ -75,11 +80,7 @@
     import Color from 'https://esm.sh/@tiptap/extension-color@2.2.4?bundle';
     import Image from 'https://esm.sh/@tiptap/extension-image@2.2.4?bundle';
 
-    const firebaseConfig = { 
-      apiKey: "YOUR_FIREBASE_API_KEY", 
-      authDomain: "YOUR_PROJECT.firebaseapp.com", 
-      projectId: "YOUR_PROJECT_ID" 
-    };
+    const firebaseConfig = { apiKey: "AIzaSyC8hA5nn9CQl8WpZNJiUU1W-veiBCnO-eQ", authDomain: "lavanote-project.firebaseapp.com", projectId: "lavanote-project" };
     const app = initializeApp(firebaseConfig);
     window.db = getFirestore(app);
     window.doc = doc; window.setDoc = setDoc; window.getDoc = getDoc;
@@ -259,7 +260,7 @@
       <main class="w-full max-w-3xl relative z-10">
         <div class="mb-4 md:mb-8 panel-3d p-3 md:p-5 flex gap-2 md:gap-4 items-center">
           <span class="text-xl md:text-3xl drop-shadow-lg">🔑</span>
-          <input type="password" id="gemini-api-key-forge" placeholder="Gemini API Key..." class="flex-1 input-3d rounded-lg px-3 md:px-5 py-2 md:py-3 text-xs md:text-base focus:border-f97316 transition-colors" oninput="let el = document.getElementById('gemini-api-key-crafter'); if(el) el.value = this.value;">
+          <input type="password" id="gemini-api-key-forge" placeholder="Gemini API Key..." class="flex-1 input-3d rounded-lg px-3 md:px-5 py-2 md:py-3 text-xs md:text-base focus:border-f97316 transition-colors disabled:opacity-50" disabled>
         </div>
         <div id="sf-upload-section" class="mb-6 md:mb-8">
           <div id="sf-upload-zone" class="upload-zone rounded-xl md:rounded-2xl p-6 md:p-16 text-center cursor-pointer panel-3d" onclick="document.getElementById('sf-file-input').click()">
@@ -318,12 +319,6 @@
         <p class="text-gray-300 text-xs md:text-base max-w-xl mx-auto font-medium">Build and enhance text prompts for AI generation.</p>
       </header>
       <main class="w-full max-w-3xl relative z-10 space-y-4 md:space-y-6">
-        
-        <div class="mb-4 md:mb-6 flex gap-2 items-center panel-3d p-3 md:p-5">
-          <span class="text-xl md:text-3xl drop-shadow-lg">🔑</span>
-          <input type="password" id="gemini-api-key-crafter" placeholder="Gemini API Key..." class="flex-1 input-3d rounded-lg px-3 md:px-5 py-2 md:py-3 text-xs md:text-base focus:border-f97316 transition-colors" oninput="let el = document.getElementById('gemini-api-key-forge'); if(el) el.value = this.value;">
-        </div>
-
         <div class="panel-3d p-4 md:p-8">
            <h2 class="text-lg md:text-xl font-bold text-white pop-text mb-3 md:mb-4">1. Base Concept</h2>
            <input type="text" id="pc-base-idea" placeholder="A solitary astronaut..." class="w-full input-3d rounded-lg md:rounded-xl px-4 md:px-5 py-3 md:py-4 text-sm md:text-lg focus:border-f97316 transition-colors" oninput="window.updateCrafterOutput()">
@@ -353,12 +348,12 @@
            </div>
            
            <div class="mt-6 border-t border-gray-800 pt-4">
-             <label class="block text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">Tap to Add Modifiers</label>
+             <label class="block text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-wider mb-3">Drag & Drop Modifiers</label>
              <div class="flex flex-wrap gap-2 md:gap-3">
-               <span onclick="window.appendToCrafter('Volumetric lighting, 8k, highly detailed')" class="px-3 py-1.5 bg-[#1e3a8a] text-white rounded-full cursor-pointer text-[10px] md:text-xs font-mono shadow-md hover:bg-[#3b82f6] transition">Volumetric 8k</span>
-               <span onclick="window.appendToCrafter('Cinematic, 35mm lens, depth of field')" class="px-3 py-1.5 bg-[#4c0519] text-white rounded-full cursor-pointer text-[10px] md:text-xs font-mono shadow-md hover:bg-[#e11d48] transition">Cinematic Lens</span>
-               <span onclick="window.appendToCrafter('Unreal Engine 5 render, ray tracing')" class="px-3 py-1.5 bg-[#1f2937] text-white rounded-full cursor-pointer text-[10px] md:text-xs font-mono shadow-md hover:bg-[#4b5563] transition">UE5 Render</span>
-               <span onclick="window.appendToCrafter('Neon cyberpunk aesthetic, high contrast')" class="px-3 py-1.5 bg-[#080c17] border border-[#f97316] text-[#f97316] rounded-full cursor-pointer text-[10px] md:text-xs font-mono shadow-md hover:bg-[#f97316] hover:text-white transition">Cyberpunk Glow</span>
+               <span draggable="true" ondragstart="event.dataTransfer.setData('text/plain', 'Volumetric lighting, 8k, highly detailed')" class="px-3 py-1.5 bg-[#1e3a8a] text-white rounded-full cursor-grab active:cursor-grabbing text-[10px] md:text-xs font-mono shadow-md hover:bg-[#3b82f6] transition">Volumetric 8k</span>
+               <span draggable="true" ondragstart="event.dataTransfer.setData('text/plain', 'Cinematic, 35mm lens, depth of field')" class="px-3 py-1.5 bg-[#4c0519] text-white rounded-full cursor-grab active:cursor-grabbing text-[10px] md:text-xs font-mono shadow-md hover:bg-[#e11d48] transition">Cinematic Lens</span>
+               <span draggable="true" ondragstart="event.dataTransfer.setData('text/plain', 'Unreal Engine 5 render, ray tracing')" class="px-3 py-1.5 bg-[#1f2937] text-white rounded-full cursor-grab active:cursor-grabbing text-[10px] md:text-xs font-mono shadow-md hover:bg-[#4b5563] transition">UE5 Render</span>
+               <span draggable="true" ondragstart="event.dataTransfer.setData('text/plain', 'Neon cyberpunk aesthetic, high contrast')" class="px-3 py-1.5 bg-[#080c17] border border-[#f97316] text-[#f97316] rounded-full cursor-grab active:cursor-grabbing text-[10px] md:text-xs font-mono shadow-md hover:bg-[#f97316] hover:text-white transition">Cyberpunk Glow</span>
              </div>
            </div>
         </div>
@@ -367,7 +362,7 @@
               <h2 class="text-lg md:text-xl font-bold text-white pop-text">3. Final Prompt</h2>
               <button onclick="window.enhancePromptWithAI()" id="pc-ai-btn" class="w-full md:w-auto btn-3d-navy px-4 md:px-5 py-2 rounded-lg text-xs md:text-sm font-bold shadow-lg uppercase tracking-wider">🪄 AI Enhance</button>
            </div>
-           <textarea id="pc-output" class="w-full input-3d rounded-lg md:rounded-xl px-4 md:px-5 py-3 md:py-4 text-xs md:text-base focus:border-f97316 transition-colors h-24 md:h-32 mb-4 md:mb-6" placeholder="Your crafted prompt will appear here..."></textarea>
+           <textarea id="pc-output" class="w-full input-3d rounded-lg md:rounded-xl px-4 md:px-5 py-3 md:py-4 text-xs md:text-base focus:border-f97316 transition-colors h-24 md:h-32 mb-4 md:mb-6" placeholder="Your crafted prompt will appear here... (You can also drag modifiers here)"></textarea>
            <div class="flex gap-2 md:gap-4">
               <button onclick="window.saveToNotesFromElement('pc-output', true, this)" class="btn-3d-burgundy px-3 md:px-5 py-2 md:py-3 rounded-lg font-bold flex-1 uppercase tracking-wider text-[10px] md:text-base transition-all">💾 Save</button>
               <button onclick="window.copyTextFromElement('pc-output', 'pc-copy-btn')" id="pc-copy-btn" class="btn-3d-silver px-3 md:px-5 py-2 md:py-3 rounded-lg font-bold flex-1 uppercase tracking-wider text-[10px] md:text-base">Copy</button>
@@ -451,7 +446,7 @@
     <div class="min-h-full w-full flex flex-col items-center p-4 md:p-10 pb-16">
       <header class="text-center mb-6 md:mb-8 w-full mt-2 md:mt-6">
         <h1 class="text-3xl md:text-5xl font-black text-white pop-text drop-shadow-2xl mb-2">Brand Assets</h1>
-        <p class="text-gray-300 text-xs md:text-base max-w-xl mx-auto font-medium">Tap any 3D asset, logo, or icon to insert it into your active note.</p>
+        <p class="text-gray-300 text-xs md:text-base max-w-xl mx-auto font-medium">Click any 3D asset, logo, or icon to insert it into your active note.</p>
       </header>
       <main class="w-full max-w-5xl relative z-10 space-y-6 md:space-y-8">
         <div class="panel-3d p-4 md:p-8">
@@ -498,6 +493,8 @@
   </div>
 
   <script>
+    const GEMINI_API_KEY = "AIzaSyB2XQJqQkLRcxBK6AKA4oGKiJz5K42Qgho"; 
+    
     window.notes = []; window.currentNoteId = null; window.saveTimeout = null; window.currentCanvasImage = '';
     
     const themePresets = {
@@ -520,6 +517,7 @@
 
     window.loadNotes = async function() {
       window.applyTheme('lava');
+      document.getElementById('gemini-api-key-forge').value = GEMINI_API_KEY;
       
       try {
           const localSaved = await localforage.getItem('lavaNotesDB');
@@ -796,7 +794,7 @@
           return;
       }
 
-      const apiKey = document.getElementById('gemini-api-key-forge').value.trim();
+      const apiKey = GEMINI_API_KEY;
       if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY_HERE") { alert("API key missing. Cannot use Gemini Fallback."); return window.resetForge(); }
       
       const reader = new FileReader();
@@ -853,20 +851,10 @@
       if (base) parts.push(base); if (style) parts.push(style); if (lighting) parts.push(lighting);
       document.getElementById('pc-output').value = parts.join(', ');
     };
-    
-    // NEW FUNCTION: Appends tapped modifiers on mobile
-    window.appendToCrafter = function(text) {
-      const output = document.getElementById('pc-output');
-      const current = output.value.trim();
-      output.value = current ? current + ', ' + text : text;
-      if(navigator.vibrate) navigator.vibrate(50);
-    };
 
     window.enhancePromptWithAI = async function() {
-      // Pulls from either Prompt Crafter tab or Style Forge tab
-      const apiKey = document.getElementById('gemini-api-key-crafter').value.trim() || document.getElementById('gemini-api-key-forge').value.trim();
-      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY_HERE") { alert("API key missing. Please paste it at the top."); return; }
-      
+      const apiKey = GEMINI_API_KEY;
+      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY_HERE") { alert("API key missing."); return; }
       const currentPrompt = document.getElementById('pc-output').value.trim();
       if (!currentPrompt) { alert("Please build a base prompt first using the inputs."); return; }
       
@@ -894,27 +882,17 @@
     
     window.copyTextFromElement = function(elementId, btnId) {
       const text = document.getElementById(elementId).value || document.getElementById(elementId).textContent;
-      
-      try {
-        navigator.clipboard.writeText(text); 
-        const btn = document.getElementById(btnId); const oldText = btn.innerText;
-        btn.innerText = "Copied!"; btn.classList.replace('btn-3d-silver', 'btn-3d-burgundy');
-        if(navigator.vibrate) navigator.vibrate(50);
-        setTimeout(() => { btn.innerText = oldText; btn.classList.replace('btn-3d-burgundy', 'btn-3d-silver'); }, 2000);
-      } catch (err) {
-        alert("Your mobile browser blocked the copy action. Please long-press the text to copy manually!");
-      }
+      navigator.clipboard.writeText(text); const btn = document.getElementById(btnId); const oldText = btn.innerText;
+      btn.innerText = "Copied!"; btn.classList.replace('btn-3d-silver', 'btn-3d-burgundy');
+      if(navigator.vibrate) navigator.vibrate(50);
+      setTimeout(() => { btn.innerText = oldText; btn.classList.replace('btn-3d-burgundy', 'btn-3d-silver'); }, 2000);
     };
 
     window.insertAsset = function(el) {
       const svgContent = el.innerHTML.trim();
-      const wrapper = `<span contenteditable="false" class="inline-block mx-2 align-middle select-none" style="max-height: 4rem;">${svgContent}</span>&nbsp;`;
+      const wrapper = `<span contenteditable="false" class="inline-block mx-2 align-middle select-none cursor-grab" style="max-height: 4rem;">${svgContent}</span>&nbsp;`;
       window.switchView('notes');
-      
-      // FIX: Force the editor to regain focus before inserting on mobile
-      if(window.tiptapEditor) {
-        window.tiptapEditor.chain().focus().insertContent(wrapper).run();
-      }
+      if(window.tiptapEditor) window.tiptapEditor.commands.insertContent(wrapper);
       if(navigator.vibrate) navigator.vibrate(50);
     };
 
@@ -936,4 +914,3 @@
   </script>
 </body>
 </html>
-
