@@ -3,9 +3,8 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: # This allows you to click a button to build manually
+  workflow_dispatch: 
 
-# This environment variable tells GitHub Actions to use the newest Node.js 24
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -20,9 +19,9 @@ jobs:
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24' # Upgraded from 20 to 24
+          node-version: '24'
 
-      - name: ☕ Setup Java (Android requirement)
+      - name: ☕ Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
@@ -31,9 +30,18 @@ jobs:
       - name: 📦 Install Dependencies
         run: npm install
 
+      - name: 📁 Prepare Web Directory (Fix for webDir)
+        run: |
+          # Create a safe folder for Capacitor
+          mkdir www
+          # Copy all web files into it (ignoring unnecessary hidden files/folders)
+          rsync -av --exclude='node_modules' --exclude='android' --exclude='.git' --exclude='.github' --exclude='www' . www/
+          # Safely update the capacitor config to point to this new folder
+          sed -i 's/"webDir": *"[^"]*"/"webDir": "www"/g' capacitor.config.json
+
       - name: 🤖 Add/Sync Android Project
         run: |
-          npx cap sync android || npx cap add android
+          npx cap add android || npx cap sync android
 
       - name: 🛠️ Build APK
         run: |
