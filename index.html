@@ -62,6 +62,9 @@
     .spinner { animation: spin 1s linear infinite; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .hidden-el { display: none !important; }
+
+    .term-cursor { display: inline-block; width: 8px; height: 1em; background: #4ade80; animation: blink 1s step-end infinite; vertical-align: text-bottom; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
   </style>
 </head>
 <body class="flex flex-col h-screen">
@@ -87,6 +90,7 @@
     <div onclick="window.switchMainTab('database')" id="nav-database" class="nav-tab"><i data-lucide="database" class="w-4 h-4 inline mb-1 mr-1"></i> Master DB</div>
     <div onclick="window.switchMainTab('sandbox')" id="nav-sandbox" class="nav-tab"><i data-lucide="code" class="w-4 h-4 inline mb-1 mr-1"></i> Sandbox</div>
     <div onclick="window.switchMainTab('assets')" id="nav-assets" class="nav-tab"><i data-lucide="package" class="w-4 h-4 inline mb-1 mr-1"></i> Assets</div>
+    <div onclick="window.switchMainTab('terminal')" id="nav-terminal" class="nav-tab"><i data-lucide="terminal" class="w-4 h-4 inline mb-1 mr-1"></i> Terminal</div>
   </nav>
 
   <main class="flex-1 overflow-hidden relative">
@@ -161,6 +165,30 @@
             <span id="save-status" class="text-f97316 opacity-0 transition-opacity duration-300 font-bold tracking-wider uppercase">💾 Saved</span>
             <div><span id="word-count" class="font-black text-white">0</span> words</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Terminal View -->
+    <div id="view-terminal" class="h-full flex flex-col overflow-hidden absolute inset-0 hidden-el" style="background:#080e08;font-family:'Fira Code',monospace;">
+      <div class="flex items-center gap-2 px-4 py-2 border-b shrink-0" style="background:#0d1a0d;border-color:#1a3a1a;">
+        <div class="flex gap-1.5">
+          <span class="w-3 h-3 rounded-full" style="background:#ff5f57;"></span>
+          <span class="w-3 h-3 rounded-full" style="background:#febc2e;"></span>
+          <span class="w-3 h-3 rounded-full" style="background:#28c840;"></span>
+        </div>
+        <span class="text-xs font-bold ml-2 tracking-widest" style="color:#4ade80;font-family:'Orbitron',sans-serif;">LAVA TERMINAL — v2.2</span>
+        <button onclick="window.termClear()" class="ml-auto text-xs px-3 py-1 rounded font-bold uppercase tracking-wider" style="background:#1a3a1a;color:#4ade80;border:1px solid #265026;">Clear</button>
+      </div>
+      <div id="term-output" class="flex-1 overflow-y-auto p-4 text-sm leading-relaxed" style="color:#4ade80;"></div>
+      <div class="flex items-center gap-2 px-4 py-3 border-t shrink-0" style="background:#0d1a0d;border-color:#1a3a1a;">
+        <span class="text-xs font-bold" style="color:#f97316;">lava@life</span>
+        <span class="text-xs" style="color:#4ade80;">:~$</span>
+        <input id="term-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          class="flex-1 bg-transparent outline-none text-sm"
+          style="color:#e5e7eb;font-family:'Fira Code',monospace;caret-color:#4ade80;"
+          placeholder="type 'help' for commands..."
+          onkeydown="window.termHandleKey(event)">
+        <span class="term-cursor"></span>
       </div>
     </div>
 
@@ -334,6 +362,192 @@
     ];
 
     // Rest of the application logic remains identical...
+  </script>
+
+  <script>
+    // ── Tab Switching ────────────────────────────────────────────────────────
+    window.switchMainTab = function(tab) {
+      const allTabs = ['workspace', 'typography', 'style', 'prompt', 'database', 'sandbox', 'assets', 'terminal'];
+      allTabs.forEach(function(t) {
+        var navEl = document.getElementById('nav-' + t);
+        var viewEl = document.getElementById('view-' + t);
+        if (navEl) navEl.classList.toggle('active', t === tab);
+        if (viewEl) viewEl.classList.toggle('hidden-el', t !== tab);
+      });
+      if (tab === 'terminal') {
+        window._termInitOnce();
+        var inp = document.getElementById('term-input');
+        if (inp) inp.focus();
+      }
+    };
+
+    // ── Terminal ─────────────────────────────────────────────────────────────
+    (function() {
+      window._termHistory    = [];
+      window._termHistoryIdx = -1;
+      window._termStartTime  = Date.now();
+      window._termReady      = false;
+
+      var COMMANDS = {
+        help: function() {
+          return [
+            '<span style="color:#f97316;font-weight:bold;">LAVA TERMINAL — Available Commands</span>',
+            '<span style="color:#6b7280;">─────────────────────────────────────────</span>',
+            '  <span style="color:#93c5fd;">help</span>             Show this help message',
+            '  <span style="color:#93c5fd;">clear</span>            Clear the terminal  <span style="color:#93c5fd;">(Ctrl+L)</span>',
+            '  <span style="color:#93c5fd;">date</span>             Show current date and time',
+            '  <span style="color:#93c5fd;">echo &lt;text&gt;</span>     Print text to terminal',
+            '  <span style="color:#93c5fd;">ls</span>               List saved documents',
+            '  <span style="color:#93c5fd;">cat &lt;num&gt;</span>       Print document content by number',
+            '  <span style="color:#93c5fd;">pwd</span>              Print working directory',
+            '  <span style="color:#93c5fd;">whoami</span>           Show current user',
+            '  <span style="color:#93c5fd;">uname</span>            Show system information',
+            '  <span style="color:#93c5fd;">uptime</span>           Show session uptime',
+            '  <span style="color:#93c5fd;">history</span>          Show command history',
+            '  <span style="color:#93c5fd;">newtab &lt;name&gt;</span>   Switch to a tab (workspace, sandbox…)',
+            '  <span style="color:#93c5fd;">version</span>          Show app version info',
+          ].join('\n');
+        },
+        date: function() { return new Date().toString(); },
+        pwd:  function() { return '/home/lava/workspace'; },
+        whoami: function() { return 'lava'; },
+        uname:  function() { return 'LAVA-OS 2.2 LTS (Volcanic Edition) x86_64'; },
+        version: function() {
+          return [
+            '<span style="color:#f97316;font-weight:bold;">LAVAZ LIFE MASTER SUITE</span>',
+            '  Version : v2.2',
+            '  Build   : 2024.Q4',
+            '  Engine  : Chromium / PWA',
+            '  Author  : Lavaz Life',
+          ].join('\n');
+        },
+        uptime: function() {
+          var ms      = Date.now() - window._termStartTime;
+          var seconds = Math.floor(ms / 1000);
+          var minutes = Math.floor(seconds / 60);
+          var hours   = Math.floor(minutes / 60);
+          return 'Session uptime: ' + hours + 'h ' + (minutes % 60) + 'm ' + (seconds % 60) + 's';
+        },
+        ls: function() {
+          var notes = window.notes;
+          if (!notes || notes.length === 0) return '(no documents found)';
+          return notes.map(function(n, i) {
+            var idx = String(i + 1).padStart(3, ' ');
+            var dateStr = new Date(n.updatedAt).toLocaleDateString();
+            return idx + '.  <span style="color:#e5e7eb;">' + escHtml(n.title) + '</span>  <span style="color:#6b7280;">[' + dateStr + ']</span>';
+          }).join('\n');
+        },
+        cat: function(args) {
+          var notes = window.notes;
+          if (!notes || notes.length === 0) return '(no documents found)';
+          var num = parseInt(args[0], 10);
+          if (isNaN(num) || num < 1 || num > notes.length)
+            return '<span style="color:#ef4444;">Usage: cat &lt;number&gt;  (1–' + notes.length + ')</span>';
+          var note = notes[num - 1];
+          var plain = note.content.replace(/<[^>]+>/g, '');
+          return '<span style="color:#f97316;">' + escHtml(note.title) + '</span>\n' + escHtml(plain || '(empty)');
+        },
+        echo: function(args) { return args.join(' '); },
+        history: function() {
+          if (!window._termHistory.length) return '(no history)';
+          return window._termHistory.slice().reverse().map(function(cmd, i) {
+            return String(i + 1).padStart(4, ' ') + '  ' + escHtml(cmd);
+          }).join('\n');
+        },
+        newtab: function(args) {
+          var valid = ['workspace','typography','style','prompt','database','sandbox','assets'];
+          var name  = (args[0] || '').toLowerCase();
+          if (!name) return 'Usage: newtab &lt;name&gt;\nTabs: ' + valid.join(', ');
+          if (!valid.includes(name)) return '<span style="color:#ef4444;">Unknown tab: ' + escHtml(name) + '</span>\nTabs: ' + valid.join(', ');
+          window.switchMainTab(name);
+          return 'Switching to <span style="color:#f97316;">' + name + '</span>…';
+        },
+      };
+
+      function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      window.termPrint = function(html, raw) {
+        var out = document.getElementById('term-output');
+        if (!out) return;
+        var line = document.createElement('div');
+        line.className = 'mb-0.5';
+        line.innerHTML = raw ? html : html.replace(/\n/g, '<br>');
+        out.appendChild(line);
+        out.scrollTop = out.scrollHeight;
+      };
+
+      window.termClear = function() {
+        var out = document.getElementById('term-output');
+        if (out) out.innerHTML = '';
+        window.termPrint(
+          '<span style="color:#f97316;font-weight:bold;">LAVA TERMINAL</span>' +
+          '  <span style="color:#6b7280;">type \'help\' for available commands</span>'
+        );
+      };
+
+      window._termInitOnce = function() {
+        if (window._termReady) return;
+        window._termReady = true;
+        window.termClear();
+      };
+
+      window.termHandleKey = function(e) {
+        var input = document.getElementById('term-input');
+        if (!input) return;
+
+        if (e.key === 'Enter') {
+          var raw = input.value.trim();
+          input.value = '';
+          window._termHistoryIdx = -1;
+
+          var prompt = '<span style="color:#f97316;">lava@life</span><span style="color:#4ade80;">:~$</span> ';
+          if (!raw) { window.termPrint(prompt); return; }
+
+          window._termHistory.unshift(raw);
+          window.termPrint(prompt + '<span style="color:#e5e7eb;">' + escHtml(raw) + '</span>');
+
+          var parts = raw.split(/\s+/);
+          var cmd   = parts[0].toLowerCase();
+          var args  = parts.slice(1);
+
+          if (COMMANDS[cmd]) {
+            var result = COMMANDS[cmd](args);
+            if (result !== undefined && result !== '') window.termPrint(result);
+          } else {
+            window.termPrint(
+              '<span style="color:#ef4444;">command not found: ' + escHtml(cmd) + '</span>' +
+              '  <span style="color:#6b7280;">— type \'help\'</span>'
+            );
+          }
+
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (!window._termHistory.length) return;
+          window._termHistoryIdx = Math.min(window._termHistoryIdx + 1, window._termHistory.length - 1);
+          input.value = window._termHistory[window._termHistoryIdx];
+
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (window._termHistoryIdx <= 0) { window._termHistoryIdx = -1; input.value = ''; return; }
+          window._termHistoryIdx--;
+          input.value = window._termHistory[window._termHistoryIdx];
+
+        } else if (e.key === 'l' && e.ctrlKey) {
+          e.preventDefault();
+          window.termClear();
+
+        } else if (e.key === 'c' && e.ctrlKey) {
+          e.preventDefault();
+          if (input && input.value) {
+            var p2 = '<span style="color:#f97316;">lava@life</span><span style="color:#4ade80;">:~$</span> ';
+            window.termPrint(p2 + '<span style="color:#e5e7eb;">' + escHtml(input.value) + '</span>^C');
+            input.value = '';
+          }
+        }
+      };
+    })();
   </script>
 </body>
 </html>            text-align: center;
